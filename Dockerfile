@@ -1,5 +1,79 @@
-FROM ollama/ollama:latest
-# Instalar Python (u otro lenguaje que use tu agente)RUN apt-get update && apt-get install -y python3 python3-pip
+# ==============================================
+# Dockerfile para Log Analyzer Agent + API
+# Optimizado para Producción
+# ==============================================
+ 
+FROM python:3.11-slim AS builder
+ 
+# Instalar dependencias de compilación
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+ 
+WORKDIR /tmp
+COPY requeriments.txt .
+ 
+# Compilar wheels
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requeriments.txt
+ 
+# ==============================================
+# Stage 2: Runtime
+# ==============================================
+ 
+FROM python:3.11-slim
+ 
+LABEL maintainer="DevOps Team"
+LABEL description="Log Analyzer Agent + API with OLLAMA Integration"
+LABEL version="2.0"
+ 
+# Configurar variables de entorno
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    FLASK_APP=api_optimized.py \
+    FLASK_ENV=production \
+    PORT=5000
+ 
+# Instalar solo dependencias de runtime necesarias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    tini \
+    && rm -rf /var/lib/apt/lists/*
+ 
+# Crear directorio de trabajo
 WORKDIR /app
-# Copiar requerimientos y código del agenteCOPY requirements.txt .RUN pip3 install --no-cache-dir -r requirements.txtCOPY . .
-# Exponer el puerto por defecto de Ollama y el de tu agenteEXPOSE 11434EXPOSE 8080# Usar un script de inicio para arrancar Ollama y el agente simultáneamenteRUN chmod +x start.shCMD ["./start.sh"]
+ 
+# Copiar wheels desde builder
+COPY --from=builder /tmp/wheels /tmp/wheels
+COPY requeriments.txt .
+ 
+# Instalar dependencias Python desde wheels
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache /tmp/wheels/* && \
+    rm -rf /tmp/wheels
+ 
+# Copiar código de la aplicación
+COPY . .
+ 
+# Crear usuario no-root (seguridad)
+RUN groupadd -r agentuser && \
+    useradd -r -g agentuser -u 1000 agentuser && \
+    chown -R agentuser:agentuser /app
+ 
+USER agentuser
+ 
+# Exponer puerto (Render asignará dinámicamente)
+EXPOSE 5000
+ 
+# Usar tini para manejar señales correctamente
+ENTRYPOINT ["/usr/bin/tini", "--"]
+ 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+    CMD curl -f http://localhost:5000/api/health || exit 1
+ 
+# Comando por defecto: ejecutar API optimizada con modo unbuffered
+CMD ["python", "-u", "api_optimized.py"]
+ 
