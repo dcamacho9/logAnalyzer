@@ -1,0 +1,435 @@
+openapi: 3.0.0
+info:
+  title: Log Analyzer Agent API
+  description: |
+    API REST para análisis inteligente de logs e incidentes con integración Ollama y ServiceNow.
+    Proporciona capacidades de análisis de patrones, diagnóstico causa-raíz y creación de incidentes.
+  version: 1.0.0
+  contact:
+    name: Log Analyzer Team
+  x-internal: false
+  x-audience: external
+
+servers:
+  - url: http://localhost:5000
+    description: Servidor local
+  - url: http://api.loganalyzer.local:5000
+    description: Servidor de producción (Omni Gateway)
+    variables:
+      environment:
+        default: prod
+        enum:
+          - dev
+          - staging
+          - prod
+
+tags:
+  - name: Health
+    description: Verificación de disponibilidad del servicio
+  - name: Analysis
+    description: Análisis de logs
+  - name: Chat
+    description: Interfaz de chat con IA
+  - name: Incidents
+    description: Gestión de incidentes ServiceNow
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Verifica que el servicio está activo y operativo
+      operationId: getHealth
+      responses:
+        '200':
+          description: Servicio disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [OK, ERROR]
+                    example: OK
+                  service:
+                    type: string
+                    example: Log Analyzer Agent
+                  model:
+                    type: string
+                    example: llama3:8b
+                  ollama_url:
+                    type: string
+                    format: uri
+                    example: http://localhost:11434
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/analyze:
+    post:
+      tags:
+        - Analysis
+      summary: Análisis Completo de Logs
+      description: |
+        Realiza un análisis completo de logs incluyendo:
+        - Ingesta de datos
+        - Parseo de eventos
+        - Análisis de patrones
+        - Diagnóstico con IA (Ollama)
+        - Generación de reporte causa-raíz
+      operationId: analyzeLogs
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: string
+                  description: String de logs crudos (opcional, si no se proporciona carga desde fuente por defecto)
+                  example: |
+                    2026-07-31T09:40:01Z [ERROR] Connection timeout
+                    2026-07-31T09:40:02Z [WARN] Retrying connection
+                limit:
+                  type: integer
+                  default: 100
+                  description: Cantidad máxima de logs a procesar
+                  example: 50
+                only_pattern_analysis:
+                  type: boolean
+                  default: false
+                  description: Si es true, solo realiza análisis de patrones sin llamar a Ollama
+      responses:
+        '200':
+          description: Análisis completado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, error]
+                    example: success
+                  step:
+                    type: string
+                    description: Etapa del procesamiento
+                    enum:
+                      - 1_ingestion
+                      - 2_pattern_analysis
+                      - 3_ollama_inference
+                      - 4_complete
+                      - error
+                    example: 4_complete
+                  annotated_events:
+                    type: array
+                    description: Primeros eventos con anotaciones
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        level:
+                          type: string
+                          enum: [ERROR, WARN, INFO, DEBUG]
+                        message:
+                          type: string
+                        service:
+                          type: string
+                        patterns:
+                          type: array
+                          items:
+                            type: string
+                  pattern_summary:
+                    type: array
+                    description: Resumen de patrones identificados
+                    items:
+                      type: object
+                      properties:
+                        pattern_name:
+                          type: string
+                        occurrences:
+                          type: integer
+                        severity:
+                          type: string
+                          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+                  diagnostic_report:
+                    type: string
+                    description: Reporte detallado generado por Ollama
+                  total_events_processed:
+                    type: integer
+                    example: 150
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '504':
+          description: Timeout esperando respuesta de Ollama
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/patterns:
+    post:
+      tags:
+        - Analysis
+      summary: Análisis Rápido de Patrones
+      description: |
+        Análisis rápido de patrones sin invocar Ollama.
+        Útil para análisis frecuentes o baja latencia.
+      operationId: analyzePatterns
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: string
+                  description: String de logs crudos
+                  example: |
+                    2026-07-31T09:40:01Z [ERROR] Connection timeout
+                    2026-07-31T09:40:02Z [ERROR] Database unavailable
+      responses:
+        '200':
+          description: Patrones identificados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, error]
+                  annotated_events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnnotatedEvent'
+                  pattern_summary:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PatternSummary'
+                  top_errors:
+                    type: array
+                    description: Errores principales identificados
+                    items:
+                      type: object
+                      properties:
+                        error_type:
+                          type: string
+                        count:
+                          type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/ollama/chat:
+    post:
+      tags:
+        - Chat
+      summary: Chat con Ollama
+      description: |
+        Interfaz de chat directo con el modelo Ollama.
+        Permite consultas de formato libre sobre logs o análisis.
+      operationId: chatWithOllama
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - prompt
+              properties:
+                prompt:
+                  type: string
+                  description: Pregunta o prompt para el modelo
+                  example: "¿Cuáles son las causas más probables de estos errores de conexión?"
+      responses:
+        '200':
+          description: Respuesta de Ollama
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, error]
+                  model:
+                    type: string
+                    example: llama3:8b
+                  prompt:
+                    type: string
+                  response:
+                    type: string
+                    description: Respuesta generada por el modelo
+        '400':
+          description: Prompt requerido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/incidents:
+    post:
+      tags:
+        - Incidents
+      summary: Crear Incidentes en ServiceNow
+      description: |
+        Crea incidentes en ServiceNow basándose en el análisis de logs.
+        Requiere que SERVICENOW_CREATE_INCIDENTS esté habilitado en variables de entorno.
+      operationId: createIncidents
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: string
+                  description: String de logs crudos
+                dedup_mode:
+                  type: string
+                  enum: [pattern, event, none]
+                  default: pattern
+                  description: Modo de deduplicación
+                time_range:
+                  type: string
+                  default: unknown
+                  description: Rango de tiempo de los logs
+                  example: "Últimos 15 minutos"
+                log_source:
+                  type: string
+                  default: api
+                  description: Fuente de los logs
+      responses:
+        '200':
+          description: Incidentes creados exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [OK, PARTIAL, ERROR]
+                  incidents_created:
+                    type: integer
+                    example: 3
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        incident_number:
+                          type: string
+                          example: INC0123456
+                        short_description:
+                          type: string
+                        severity:
+                          type: string
+        '400':
+          description: Incidentes deshabilitados o logs inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    AnnotatedEvent:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [ERROR, WARN, INFO, DEBUG, UNKNOWN]
+        message:
+          type: string
+        service:
+          type: string
+        rawLine:
+          type: string
+        patterns:
+          type: array
+          items:
+            type: string
+
+    PatternSummary:
+      type: object
+      properties:
+        pattern_name:
+          type: string
+        occurrences:
+          type: integer
+        severity:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+        affected_services:
+          type: array
+          items:
+            type: string
+        first_occurrence:
+          type: string
+          format: date-time
+        last_occurrence:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum: [error, info]
+        message:
+          type: string
+        step:
+          type: string
+          description: Etapa donde ocurrió el error
+        hint:
+          type: string
+          description: Sugerencia para resolver el error
+
+  responses:
+    BadRequest:
+      description: Request inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key para autenticación (opcional en desarrollo)
+
+security:
+  - apiKey: []

@@ -1,0 +1,218 @@
+{
+  "report_metadata": {
+    "generation_date": "2026-08-03",
+    "log_source": "test_logs.txt",
+    "log_period": "2026-06-08 00:03 - 16:31",
+    "total_errors": 12,
+    "total_transactions": 350,
+    "error_rate": "3.43%"
+  },
+  "errors": [
+    {
+      "error_id": "ERR_AUTH_001",
+      "type": "Azure Token Validation Failure",
+      "severity": "CRITICAL",
+      "count": 6,
+      "first_occurrence": "2026-06-08T16:03:10.394+0200",
+      "last_occurrence": "2026-06-08T16:31:38.409+0200",
+      "affected_service": "TestAzAudimapADFS",
+      "affected_endpoints": [
+        "/test/srv/audimap/types_structure_report",
+        "/test/srv/audimap/task",
+        "/test/srv/audimap/types_status_report",
+        "/test/srv/audimap/facts_observer",
+        "/test/srv/audimap/additional_proposals",
+        "/test/srv/audimap/origins",
+        "/test/srv/audimap/close_periods"
+      ],
+      "error_message": "Error in MAP IFW Azure Token Validation-v2.0: The authorization process has failed due to an exception. This token cannot be used with this service.",
+      "affected_uuids": [
+        "4ba212",
+        "4ba213",
+        "4ba214",
+        "4ba215",
+        "4ba216",
+        "4ba218",
+        "4ba219",
+        "4ba5ce",
+        "4ba5cf",
+        "4ba5d2",
+        "4ba5d5",
+        "4ba5d6"
+      ],
+      "affected_users": [
+        "Multiple anonymous Bearer tokens"
+      ],
+      "affected_client_ips": [
+        "52.1.149.40",
+        "34.226.151.229",
+        "23.204.110.75",
+        "2.20.108.84"
+      ],
+      "http_response": 401,
+      "root_cause": "Token lacks required permissions or has expired for TestAzAudimapADFS service",
+      "impact": "Users cannot access audit map endpoints; requests blocked at authorization layer",
+      "recovery_time": "41-47ms per failed request",
+      "recommendation": [
+        "Verify Azure AD token scope includes TestAzAudimapADFS access",
+        "Check token expiration times in Azure ADFS configuration",
+        "Validate service principal permissions in Azure",
+        "Review authorization policy in MAP IFW Azure Token Validation fragment"
+      ]
+    },
+    {
+      "error_id": "ERR_DB_001",
+      "type": "Duplicate Primary Key - JDBC Query Failure",
+      "severity": "HIGH",
+      "count": 4,
+      "first_occurrence": "2026-06-08T16:21:13.666+0200",
+      "last_occurrence": "2026-06-08T16:22:14.777+0200",
+      "affected_service": "esp/ext/api/frontales/1.0/login",
+      "affected_endpoints": [
+        "/esp/ext/api/frontales/1.0/login"
+      ],
+      "error_message": "Failed to perform querying since Duplicate entry 'APP-CMPCRTVRDNSE-c679a92b-6a9a-4185-8077-3d065082d811' for key 'json_web_token.PRIMARY'",
+      "affected_database_table": "json_web_token",
+      "duplicate_key": "APP-CMPCRTVRDNSE-c679a92b-6a9a-4185-8077-3d065082d811",
+      "affected_user": "APP-CMPCRTVRDNSE",
+      "http_response": 200,
+      "root_cause": "Token successfully generated and returned (HTTP 200) but fails to insert into database due to duplicate entry constraint",
+      "symptom": "False positive - client receives 200 response but token is not persisted in DB",
+      "occurrence_pattern": "4 occurrences in 3 minutes (16:21:13 → 16:22:14)",
+      "impact": "Token management inconsistency; generated tokens not tracked in database",
+      "recovery_time": "Automatic - HTTP 200 returned despite DB failure",
+      "recommendation": [
+        "Implement database cleanup for orphaned/expired tokens",
+        "Add transaction rollback on duplicate key violation",
+        "Implement token UUID generation to ensure uniqueness",
+        "Add database constraint: UNIQUE(user_id, token_hash, created_timestamp)",
+        "Implement batch cleanup job for expired tokens (> 24h)",
+        "Add monitoring alert for duplicate key violations"
+      ]
+    },
+    {
+      "error_id": "ERR_AUTH_002",
+      "type": "Identity Provider Not Found",
+      "severity": "MEDIUM",
+      "count": 1,
+      "first_occurrence": "2026-06-08T16:23:13.416+0200",
+      "affected_service": "siiFactEmIGIC",
+      "affected_endpoints": [
+        "/esp/srv/sii/suministro-fact-emitidas"
+      ],
+      "error_message": "could not verify identity provider ID 4d62b51ba425e99a4d043f792be91e00 with credentials from APP-ESPsiiBDGI",
+      "affected_user": "APP-ESPsiiBDGI",
+      "auth_method": "TLS Certificate",
+      "identity_provider_id": "4d62b51ba425e99a4d043f792be91e00",
+      "http_response": 401,
+      "root_cause": "Identity provider configuration missing or disabled in serverAuthenticationAssertion",
+      "impact": "Certificate-based authentication fails; siiFactEmIGIC service inaccessible",
+      "recovery_time": "44ms per failed request",
+      "recommendation": [
+        "Verify identity provider ID exists in configuration database",
+        "Check if provider was recently deleted or disabled",
+        "Validate LDAP connection string for Environment Active Directory",
+        "Regenerate identity provider configuration with correct ID",
+        "Run database integrity check on IdentityProviders table"
+      ]
+    },
+    {
+      "error_id": "ERR_AUTH_003",
+      "type": "JWT Token Validation Failure",
+      "severity": "MEDIUM",
+      "count": 1,
+      "first_occurrence": "2026-06-08T16:21:14.530+0200",
+      "affected_service": "esp/srv/api/clients/1.0",
+      "affected_endpoints": [
+        "/esp/srv/api/clients/1.0/clients/search"
+      ],
+      "error_message": "Error in MAP IFW Validate JWT-v2.0: The authorization process has failed due to an exception. This token cannot be used with this service.",
+      "affected_user": "APP-CMPAPPIAN",
+      "http_response": 200,
+      "note": "Despite JWT validation error, request proceeds to OAuth2 validation and succeeds",
+      "root_cause": "JWT token lacks required claims or has insufficient scope for esp/srv/api/clients/1.0",
+      "recovery_behavior": "Fallback to OAuth2 validation successful (HTTP 200 returned)",
+      "impact": "JWT validation layer warning but request ultimately succeeds via fallback mechanism",
+      "recommendation": [
+        "Review JWT token claims for APP-CMPAPPIAN user",
+        "Verify scopes in JWT match service requirements",
+        "Check OAuth2 token validation configuration as backup",
+        "Consider consolidating JWT/OAuth2 validation to single method",
+        "Add logging to distinguish genuine failures from fallback cases"
+      ]
+    }
+  ],
+  "error_summary_by_category": {
+    "Authorization Errors": {
+      "count": 8,
+      "percentage": "66.7%",
+      "severity": "CRITICAL-MEDIUM",
+      "affected_services": [
+        "TestAzAudimapADFS",
+        "esp/srv/api/clients/1.0",
+        "siiFactEmIGIC"
+      ]
+    },
+    "Database Errors": {
+      "count": 4,
+      "percentage": "33.3%",
+      "severity": "HIGH",
+      "affected_services": [
+        "esp/ext/api/frontales/1.0/login"
+      ]
+    }
+  },
+  "affected_users": {
+    "APP-CMPCRTVRDNSE": {
+      "error_count": 4,
+      "error_types": ["Duplicate DB Entry"],
+      "status": "Active but inconsistent token management"
+    },
+    "APP-CMPAPPIAN": {
+      "error_count": 1,
+      "error_types": ["JWT Validation"],
+      "status": "Recoverable via OAuth2 fallback"
+    },
+    "APP-ESPsiiBDGI": {
+      "error_count": 1,
+      "error_types": ["Identity Provider Missing"],
+      "status": "Blocked - Cannot authenticate"
+    }
+  },
+  "performance_metrics": {
+    "average_response_time_successful": "550ms",
+    "average_response_time_failed": "50ms",
+    "slowest_request": "2970ms (esp/ext/api/frontales/1.0/cliente)",
+    "slowest_service": "esp/ext/api/frontales/1.0/cliente (avg 2170ms)"
+  },
+  "action_items": [
+    {
+      "priority": "IMMEDIATE",
+      "task": "Fix Azure Token Validation for TestAzAudimapADFS",
+      "owner": "Security Team",
+      "timeline": "Within 24 hours",
+      "effort": "2-4 hours"
+    },
+    {
+      "priority": "IMMEDIATE",
+      "task": "Implement database cleanup for duplicate JWT tokens",
+      "owner": "Database Admin",
+      "timeline": "Within 24 hours",
+      "effort": "1-2 hours"
+    },
+    {
+      "priority": "URGENT",
+      "task": "Restore missing Identity Provider for siiFactEmIGIC",
+      "owner": "Authentication Team",
+      "timeline": "Within 2 hours",
+      "effort": "30 minutes"
+    },
+    {
+      "priority": "HIGH",
+      "task": "Review and consolidate JWT/OAuth2 validation strategy",
+      "owner": "Architecture Team",
+      "timeline": "Within 1 week",
+      "effort": "4-8 hours"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "Log Analyzer Omni Gateway",
+  "description": "Omni Gateway para exponer el Agente de Análisis de Logs - Integración con OLLAMA y ServiceNow",
+  "type": "mule-application",
+  "version": "1.0.0",
+  "groupId": "com.mycompany",
+  "assetId": "log-analyzer-omni-gateway",
+  "organizationId": "",
+  "classifier": "mule-application",
+  "tags": [
+    "log-analysis",
+    "log-analyzer",
+    "ollama",
+    "servicenow",
+    "gateway",
+    "omni-channel",
+    "integration"
+  ],
+  "categories": [
+    "integration",
+    "api"
+  ],
+  "minMuleVersion": "4.11.0",
+  "javaVersions": [
+    "17",
+    "21"
+  ],
+  "keywords": "log analysis, OLLAMA, ServiceNow, gateway, omni",
+  "documentationUrl": "",
+  "sourceUrl": "",
+  "issueTrackerUrl": "",
+  "authors": [
+    {
+      "name": "Your Organization",
+      "email": "contact@yourorg.com"
+    }
+  ],
+  "license": "CPAL v1.0",
+  "visibility": "PUBLIC"
+}

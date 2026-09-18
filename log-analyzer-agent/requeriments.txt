@@ -1,0 +1,18 @@
+# =========================================================================
+# DEPENDENCIAS DEL SISTEMA - LOG-ANALYZER-AGENT
+# =========================================================================
+
+# Framework web para la REST API
+Flask>=2.3.0
+
+# Gestión de peticiones HTTP/HTTPS seguras hacia Ollama y la API de ServiceNow
+requests>=2.31.0
+
+# Gestión y carga volátil de variables de entorno desde el archivo .env
+python-dotenv>=1.0.1
+
+# (Opcional) Agiliza el parseo y validación de formatos de fechas ISO-8601
+python-dateutil>=2.9.0
+
+# (Opcional) Si decides añadir pruebas unitarias o simular respuestas de la API de ServiceNow
+responses>=0.25.0

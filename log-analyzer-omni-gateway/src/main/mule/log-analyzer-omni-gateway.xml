@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+		http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+		http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd">
+
+	<!-- ========================================
+		 HTTP LISTENER CONFIGURATION
+		 ======================================== -->
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" 
+		doc:id="12345678-1234-1234-1234-123456789012">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+
+	<!-- ========================================
+		 HTTP REQUESTER CONFIGURATION (Agente Python)
+		 ======================================== -->
+	<http:request-config name="Log_Analyzer_Agent_config" doc:name="Log Analyzer Agent config"
+		doc:id="87654321-4321-4321-4321-210987654321">
+		<http:request-connection 
+			host="${agent.host:localhost}" 
+			port="${agent.port:5000}" 
+			protocol="${agent.protocol:HTTP}">
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties 
+					connectionTimeout="120000" 
+					clientTimeout="600000" />
+			</http:client-socket-properties>
+			<!-- TLS Configuration para HTTPS (ngrok, CloudHub, etc.) -->
+			<tls:context enableHostnameVerification="false">
+				<tls:trust-store 
+					insecure="true" />
+			</tls:context>
+		</http:request-connection>
+	</http:request-config>
+
+	<!-- ========================================
+		 MAIN API FLOW
+		 ======================================== -->
+	<flow name="log-analyzer-main-flow" doc:name="log-analyzer-main-flow" doc:id="11111111-1111-1111-1111-111111111111">
+		<http:listener doc:name="HTTP Listener" doc:id="22222222-2222-2222-2222-222222222222" 
+			config-ref="HTTP_Listener_config" 
+			path="/api/*" 
+			allowedMethods="GET,POST,PUT,DELETE"
+			responseStreamingMode="AUTO">
+			<http:response statusCode="#[vars.httpStatus default 200]" />
+			<http:error-response statusCode="#[vars.httpStatus default 500]" />
+		</http:listener>
+		
+		<logger level="INFO" doc:name="Log Request" doc:id="33333333-3333-3333-3333-333333333333" 
+			message="Received request: Method=#[attributes.method], Path=#[attributes.requestPath], Payload=#[payload]" />
+		
+		<!-- Route based on path and method -->
+		<choice doc:name="Route by Endpoint" doc:id="44444444-4444-4444-4444-444444444444">
+			<!-- GET /api/health -->
+			<when expression="#[attributes.method == 'GET' and attributes.requestPath == '/api/health']" doc:name="GET /health">
+				<flow-ref name="health-check-flow" doc:name="Health Check Flow" doc:id="55555555-5555-5555-5555-555555555555" />
+			</when>
+
+			<!-- POST /api/analyze -->
+			<when expression="#[attributes.method == 'POST' and attributes.requestPath == '/api/analyze']" doc:name="POST /analyze">
+				<flow-ref name="analyze-logs-flow" doc:name="Analyze Logs Flow" doc:id="66666666-6666-6666-6666-666666666666" />
+			</when>
+
+			<!-- POST /api/patterns -->
+			<when expression="#[attributes.method == 'POST' and attributes.requestPath == '/api/patterns']" doc:name="POST /patterns">
+				<flow-ref name="analyze-patterns-flow" doc:name="Analyze Patterns Flow" doc:id="77777777-7777-7777-7777-777777777777" />
+			</when>
+
+			<!-- POST /api/incidents -->
+			<when expression="#[attributes.method == 'POST' and attributes.requestPath == '/api/incidents']" doc:name="POST /incidents">
+				<flow-ref name="create-incidents-flow" doc:name="Create Incidents Flow" doc:id="88888888-8888-8888-8888-888888888888" />
+			</when>
+
+			<!-- 404 Not Found -->
+			<otherwise doc:name="Otherwise">
+				<set-payload value='{"error": "Endpoint not found", "path": "#[attributes.requestPath]"}' doc:name="Set 404 Response" doc:id="99999999-9999-9999-9999-999999999999" mimeType="application/json" />
+				<set-variable variableName="httpStatus" value="404" doc:name="Set Status 404" doc:id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" />
+			</otherwise>
+		</choice>
+
+		<error-handler doc:name="Error Handler" doc:id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb">
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="cccccccc-cccc-cccc-cccc-cccccccccccc">
+				<set-payload value='{"status": "error", "message": "#[error.description]"}' doc:name="Set Error Payload" doc:id="dddddddd-dddd-dddd-dddd-dddddddddddd" mimeType="application/json" />
+				<set-variable variableName="httpStatus" value="500" doc:name="Set Status 500" doc:id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+
+	<!-- ========================================
+		 HEALTH CHECK FLOW
+		 ======================================== -->
+	<flow name="health-check-flow" doc:name="health-check-flow" doc:id="11111111-2222-3333-4444-555555555555">
+		<logger level="DEBUG" doc:name="Health Check Started" doc:id="22222222-3333-4444-5555-666666666666" 
+			message="Health check request started" />
+		
+		<http:request method="GET" doc:name="Call Agent Health" doc:id="33333333-4444-5555-6666-777777777777"
+			config-ref="Log_Analyzer_Agent_config"
+			path="/api/health"
+			responseTimeout="900000"
+			target="response">
+			<http:response-validator>
+				<http:success-status-code-validator values="200" />
+			</http:response-validator>
+		</http:request>
+
+		<logger level="INFO" doc:name="Health Check Success" doc:id="44444444-5555-6666-7777-888888888888" 
+			message="Health check successful: #[payload]" />
+
+		<set-variable variableName="httpStatus" value="200" doc:name="Set Status 200" doc:id="55555555-6666-7777-8888-999999999999" />
+	</flow>
+
+	<!-- ========================================
+		 ANALYZE LOGS FLOW
+		 ======================================== -->
+	<flow name="analyze-logs-flow" doc:name="analyze-logs-flow" doc:id="11111111-2222-3333-4444-aaaaaaaaaaaa">
+		<logger level="DEBUG" doc:name="Analyze Request Started" doc:id="22222222-3333-4444-5555-bbbbbbbbbbbb" 
+			message="Analyze logs request: #[payload]" />
+		
+		<!-- Validate request body -->
+		<ee:transform doc:name="Prepare Request Body" doc:id="33333333-4444-5555-6666-cccccccccccc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	logs: if (payload.logs != null and payload.logs != "") payload.logs else "",
+	limit: payload.limit default 100,
+	only_pattern_analysis: payload.only_pattern_analysis default false
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+		<http:request method="POST" doc:name="Call Agent Analyze" doc:id="44444444-5555-6666-7777-dddddddddddd"
+			config-ref="Log_Analyzer_Agent_config"
+			path="/api/analyze"
+			responseTimeout="900000">
+			<http:response-validator>
+				<http:success-status-code-validator values="200,400,502,503,504" />
+			</http:response-validator>
+		</http:request>
+
+		<logger level="INFO" doc:name="Analyze Response" doc:id="55555555-6666-7777-8888-eeeeeeeeeeee" 
+			message="Analyze response: #[payload]" />
+
+		<set-variable variableName="httpStatus" value="#[if (payload.status == 'success') '200' else '400']" 
+			doc:name="Set HTTP Status" doc:id="66666666-7777-8888-9999-ffffffffffff" />
+	</flow>
+
+	<!-- ========================================
+		 ANALYZE PATTERNS FLOW
+		 ======================================== -->
+	<flow name="analyze-patterns-flow" doc:name="analyze-patterns-flow" doc:id="11111111-2222-3333-4444-111111111111">
+		<logger level="DEBUG" doc:name="Pattern Analysis Started" doc:id="22222222-3333-4444-5555-222222222222" 
+			message="Pattern analysis request: #[payload]" />
+		
+		<ee:transform doc:name="Prepare Request Body" doc:id="33333333-4444-5555-6666-333333333333">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	logs: if (payload.logs != null and payload.logs != "") payload.logs else "",
+	limit: payload.limit default 100
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+		<http:request method="POST" doc:name="Call Agent Patterns" doc:id="44444444-5555-6666-7777-444444444444"
+			config-ref="Log_Analyzer_Agent_config"
+			path="/api/patterns"
+			responseTimeout="900000">
+			<http:response-validator>
+				<http:success-status-code-validator values="200,400" />
+			</http:response-validator>
+		</http:request>
+
+		<logger level="INFO" doc:name="Patterns Response" doc:id="55555555-6666-7777-8888-555555555555" 
+			message="Patterns response: #[payload]" />
+
+		<set-variable variableName="httpStatus" value="#[if (payload.status == 'success') '200' else '400']" 
+			doc:name="Set HTTP Status" doc:id="66666666-7777-8888-9999-666666666666" />
+	</flow>
+
+	<!-- ========================================
+		 CREATE INCIDENTS FLOW
+		 ======================================== -->
+	<flow name="create-incidents-flow" doc:name="create-incidents-flow" doc:id="11111111-2222-3333-4444-777777777777">
+		<logger level="DEBUG" doc:name="Incident Creation Started" doc:id="22222222-3333-4444-5555-888888888888" 
+			message="Create incidents request: #[payload]" />
+		
+		<ee:transform doc:name="Prepare Request Body" doc:id="33333333-4444-5555-6666-999999999999">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	logs: payload.logs default "",
+	logs_source: payload.logs_source default "omni-gateway",
+	dedup_mode: payload.dedup_mode default "pattern",
+	time_range: payload.time_range default "Last 15 minutes"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+		<http:request method="POST" doc:name="Call Agent Incidents" doc:id="44444444-5555-6666-7777-aaaaaaaaaaaa"
+			config-ref="Log_Analyzer_Agent_config"
+			path="/api/incidents"
+			responseTimeout="900000">
+			<http:response-validator>
+				<http:success-status-code-validator values="200,401,500" />
+			</http:response-validator>
+		</http:request>
+
+		<logger level="INFO" doc:name="Incidents Response" doc:id="55555555-6666-7777-8888-bbbbbbbbbbbb" 
+			message="Incidents response: #[payload]" />
+
+		<set-variable variableName="httpStatus" value="#[if (payload.status == 'success') '200' else if (payload.status == 'error') '500' else '401']" 
+			doc:name="Set HTTP Status" doc:id="66666666-7777-8888-9999-cccccccccccc" />
+	</flow>
+
+</mule>

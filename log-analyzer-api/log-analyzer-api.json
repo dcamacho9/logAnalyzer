@@ -1,0 +1,332 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Log Analyzer API",
+    "description": "API para análisis de logs con OLLAMA e integración ServiceNow",
+    "contact": {
+      "name": "DevOps Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081/api",
+      "description": "Local Omni Gateway"
+    },
+    {
+      "url": "https://omni-gateway.example.com/api",
+      "description": "Production Omni Gateway"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Verificar que el servicio de análisis de logs está activo",
+        "operationId": "getHealth",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Servicio está operativo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "service": {
+                      "type": "string",
+                      "example": "Log Analyzer Agent"
+                    },
+                    "model": {
+                      "type": "string",
+                      "example": "llama2"
+                    },
+                    "ollama_url": {
+                      "type": "string",
+                      "example": "http://localhost:11434"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyze": {
+      "post": {
+        "summary": "Análisis Completo de Logs",
+        "description": "Ingesta, análisis de patrones y diagnóstico con OLLAMA",
+        "operationId": "analyzeLogs",
+        "tags": [
+          "Analysis"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logs": {
+                    "type": "string",
+                    "description": "String de logs (opcional, sino carga desde test_logs.txt)",
+                    "example": "2026-07-31T09:40:01Z [ERROR] Connection timeout..."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Límite de logs a procesar",
+                    "default": 100,
+                    "example": 100
+                  },
+                  "only_pattern_analysis": {
+                    "type": "boolean",
+                    "description": "Si es true, solo retorna análisis de patrones sin invocar OLLAMA",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Análisis completado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success",
+                        "error"
+                      ]
+                    },
+                    "step": {
+                      "type": "string",
+                      "example": "4_complete"
+                    },
+                    "annotated_events": {
+                      "type": "array",
+                      "description": "Primeros 10 eventos anotados",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "pattern_summary": {
+                      "type": "array",
+                      "description": "Resumen de patrones encontrados",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "diagnostic_report": {
+                      "type": "string",
+                      "description": "Reporte generado por OLLAMA"
+                    },
+                    "total_events_processed": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No se encontraron logs"
+          },
+          "504": {
+            "description": "Timeout esperando respuesta de OLLAMA"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/patterns": {
+      "post": {
+        "summary": "Análisis de Patrones Solo",
+        "description": "Análisis rápido de patrones sin invocar OLLAMA",
+        "operationId": "analyzePatterns",
+        "tags": [
+          "Analysis"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logs": {
+                    "type": "string",
+                    "description": "String de logs",
+                    "example": "2026-07-31T09:40:01Z [ERROR] Connection timeout..."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Límite de logs a procesar",
+                    "default": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Análisis de patrones completado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success",
+                        "error"
+                      ]
+                    },
+                    "annotated_events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "pattern_summary": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "top_errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No se encontraron logs"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/incidents": {
+      "post": {
+        "summary": "Crear Incidentes ServiceNow",
+        "description": "Analizar logs y crear incidentes automáticamente en ServiceNow",
+        "operationId": "createIncidents",
+        "tags": [
+          "Integration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logs": {
+                    "type": "string",
+                    "description": "String de logs"
+                  },
+                  "logs_source": {
+                    "type": "string",
+                    "description": "Identificador de la fuente de logs",
+                    "example": "prod-k8s-cluster"
+                  },
+                  "dedup_mode": {
+                    "type": "string",
+                    "enum": [
+                      "pattern",
+                      "timestamp",
+                      "disabled"
+                    ],
+                    "default": "pattern",
+                    "description": "Estrategia de deduplicación"
+                  },
+                  "time_range": {
+                    "type": "string",
+                    "description": "Rango de tiempo a considerar",
+                    "example": "Últimos 15 minutos"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Incidentes creados exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "incidents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "stats": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ServiceNow no configurado"
+          },
+          "500": {
+            "description": "Error en creación de incidentes"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "ollama_url": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

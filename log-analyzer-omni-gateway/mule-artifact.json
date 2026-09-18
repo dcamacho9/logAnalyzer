@@ -1,0 +1,24 @@
+{
+  "minMuleVersion": "4.11.6",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedPackages": [
+        "com.mycompany.log_analyzer",
+        "com.mycompany.flows"
+      ],
+      "exportedResources": [
+        "/META-INF/maven/",
+        "src/main/resources/properties/"
+      ]
+    }
+  },
+  "securityModel": "signing",
+  "javaSpecificationVersions": [
+    "17",
+    "21"
+  ],
+  "name": "Log Analyzer Omni Gateway",
+  "description": "Omni Gateway para exponer el Agente de Análisis de Logs - Integración con OLLAMA y ServiceNow"
+}

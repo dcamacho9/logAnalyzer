@@ -1,0 +1,23 @@
+{
+  "main": "log-analyzer-api.yaml",
+  "name": "Log Analyzer API",
+  "description": "OpenAPI specification for Log Analyzer integration with OLLAMA and ServiceNow",
+  "classifier": "oas",
+  "organizationId": "YOUR_ORG_ID",
+  "descriptorVersion": "1.0.0",
+  "tags": [
+    "log-analyzer",
+    "analysis",
+    "ollama",
+    "servicenow",
+    "api-spec"
+  ],
+  "groupId": "com.yourcompany",
+  "assetId": "log-analyzer-api",
+  "version": "1.0.0",
+  "author": {
+    "name": "DevOps Team",
+    "email": "team@company.com"
+  },
+  "visibility": "PUBLIC"
+}
