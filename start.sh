@@ -12,4 +12,4 @@ ollama pull llama3
  
 # Arrancar la aplicación de tu agente de IA (ej. un backend en FastAPI o Flask)
 echo "Iniciando el Agente de IA..."
-python3 agent.py
+python3 api_optimized.py
