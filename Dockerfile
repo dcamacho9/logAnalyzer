@@ -31,7 +31,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    FLASK_APP=api_optimized.py \
+    FLASK_APP=api.py \
     FLASK_ENV=production \
     PORT=5000
  
@@ -74,6 +74,5 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
     CMD curl -f http://localhost:5000/api/health || exit 1
  
-# Comando por defecto: ejecutar API optimizada con modo unbuffered
-CMD ["python", "-u", "api_optimized.py"]
- 
+# Comando por defecto: ejecutar API con modo unbuffered
+CMD ["python", "-u", "api.py"]
