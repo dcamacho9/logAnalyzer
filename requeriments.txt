@@ -16,3 +16,7 @@ python-dateutil>=2.9.0
 
 # (Opcional) Si decides añadir pruebas unitarias o simular respuestas de la API de ServiceNow
 responses>=0.25.0
+
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
