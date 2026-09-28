@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
  WORKDIR /app
  
- Compilar wheels
+ #Compilar wheels
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requirements.txt
  
 # ==============================================
