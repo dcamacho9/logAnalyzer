@@ -10,13 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
  
-# WORKDIR /tmp
-# COPY requirements.txt .
+ WORKDIR /tmp
+ COPY requirements.txt .
 
-# WORKDIR /app
+ WORKDIR /app
  
-# Compilar wheels
-#RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requirements.txt
+ Compilar wheels
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requirements.txt
  
 # ==============================================
 # Stage 2: Runtime
