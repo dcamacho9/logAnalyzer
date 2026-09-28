@@ -16,7 +16,7 @@ COPY requirements.txt .
 WORKDIR /app
  
 # Compilar wheels
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requeriments.txt
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels -r requirements.txt
  
 # ==============================================
 # Stage 2: Runtime
