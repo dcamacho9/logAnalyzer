@@ -43,7 +43,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
  
 # Crear directorio de trabajo
-WORKDIR /app
  
 # Copiar wheels desde builder
 COPY --from=builder /tmp/wheels /tmp/wheels
