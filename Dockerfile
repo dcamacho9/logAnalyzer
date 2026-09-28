@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
  
 WORKDIR /tmp
-COPY requeriments.txt .
+COPY requirements.txt .
 
 WORKDIR /app
  
