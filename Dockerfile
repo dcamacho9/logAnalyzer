@@ -48,7 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  
 # Copiar wheels desde builder
 COPY --from=builder /tmp/wheels /tmp/wheels
-COPY requeriments.txt .
+COPY requirements.txt .
  
 # Instalar dependencias Python desde wheels
 RUN pip install --upgrade pip setuptools wheel && \
